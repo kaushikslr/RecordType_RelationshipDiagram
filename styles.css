@@ -1,0 +1,475 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    gap: 10px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1600px;
+    height: 800px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.test-controls {
+    align-self: flex-start;
+    z-index: 900;
+}
+
+.test-btn {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    white-space: nowrap;
+}
+
+.test-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.test-btn:active {
+    transform: translateY(0);
+}
+
+.controls-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: white;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.toolbar-btn {
+    padding: 8px 16px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.toolbar-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.toolbar-btn:active {
+    transform: scale(0.98);
+}
+
+#canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    cursor: grab;
+    background-color: white;
+    background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+#canvas-container.panning {
+    cursor: grabbing;
+}
+
+#svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    transform-origin: 0 0;
+    overflow: visible;
+}
+
+#canvas {
+    position: absolute;
+    transform-origin: 0 0;
+    transition: none;
+    z-index: 1;
+}
+
+.record-type {
+    position: absolute;
+    background: white;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    min-width: 220px;
+    max-width: 280px;
+    cursor: move;
+    transition: box-shadow 0.2s;
+    border: 1px solid #e5e7eb;
+    border-top-width: 2px;
+    z-index: 2;
+}
+
+.record-type:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    z-index: 3;
+}
+
+.record-type.dragging {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 100;
+}
+
+.record-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.record-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1f2937;
+    flex: 1;
+}
+
+.record-source {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-left: auto;
+}
+
+.record-collapse {
+    display: none;
+}
+
+.record-fields {
+    padding: 4px 0;
+    border-top: 1px solid #f3f4f6;
+}
+
+.field {
+    padding: 6px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    transition: background 0.15s;
+    gap: 8px;
+}
+
+.field:hover {
+    background: #f9fafb;
+}
+
+.field-name {
+    color: #4b5563;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.field-icon {
+    width: 12px;
+    height: 12px;
+    opacity: 0.6;
+}
+
+.field-type {
+    color: #9ca3af;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.record-header {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 4px 4px 0 0;
+    background: white;
+}
+
+.relationship-line {
+    stroke-width: 2;
+    fill: none;
+    stroke: #9ca3af;
+}
+
+.relationship-marker {
+    fill: currentColor;
+}
+
+.tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 2000;
+    display: none;
+    max-width: 250px;
+}
+
+.zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+}
+
+.zoom-btn {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.zoom-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: white;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    font-size: 12px;
+}
+
+.legend-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #1f2937;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+    color: #6b7280;
+}
+
+.legend-line {
+    width: 30px;
+    height: 2px;
+}
+
+.toggle-fields {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 20px;
+    background: #d1d5db;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.toggle-switch.active {
+    background: #3b82f6;
+}
+
+.toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.toggle-switch.active .toggle-slider {
+    transform: translateX(20px);
+}
+
+.complexity-control {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 100;
+}
+
+.view-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-label {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+    user-select: none;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    margin: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider-btn {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: 0.3s;
+    border-radius: 20px;
+}
+
+.toggle-slider-btn:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider-btn {
+    background-color: #3b82f6;
+}
+
+.toggle-switch input:checked + .toggle-slider-btn:before {
+    transform: translateX(16px);
+}
+
+.toggle-switch input:focus + .toggle-slider-btn {
+    box-shadow: 0 0 1px #3b82f6;
+}
+
+.complexity-slider input[type="range"] {
+    width: 100%;
+    height: 3px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    margin-bottom: 6px;
+}
+
+.complexity-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.complexity-slider input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #3b82f6;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.complexity-markers {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+}
+
+.marker {
+    font-size: 9px;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.marker:hover {
+    color: #6b7280;
+}
+
+.marker.active {
+    color: #3b82f6;
+    font-weight: 600;
+}

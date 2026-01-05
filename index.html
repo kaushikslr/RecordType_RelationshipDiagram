@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appian ERD Visualizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="test-controls">
+        <button class="test-btn" onclick="toggleDataset()">
+            <span id="dataset-label">Switch to 30 Nodes</span>
+        </button>
+    </div>
+    
+    <div class="app-container">
+        <div id="canvas-container">
+            <svg id="svg-layer"></svg>
+            <div id="canvas"></div>
+        </div>
+
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="resetView()"><i class="fa-solid fa-arrows-to-circle"></i></button>
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+        </div>
+
+        <div class="complexity-control">
+            <div class="view-toggle">
+                <span class="toggle-label">Compact</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="viewToggle" onchange="toggleView(this.checked)">
+                    <span class="toggle-slider-btn"></span>
+                </label>
+                <span class="toggle-label">Detailed</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Data structure for Appian record types
+        let currentDataset = 'small'; // 'small' or 'large'
+        
+        const smallRecordTypes = [
+            {
+                id: 'employee',
+                name: 'Users',
+                icon: 'Icons/User.png',
+                color: '#DD3457',
+                source: 'Database',
+                x: 150,
+                y: 300,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'firstName', type: 'Text' },
+                    { name: 'lastName', type: 'Text' },
+                    { name: 'email', type: 'Text' },
+                    { name: 'departmentId', type: 'Number (Integer)' },
+                    { name: 'hireDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'department',
+                name: 'RE Department',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 650,
+                y: 100,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'managerId', type: 'Number (Integer)' },
+                    { name: 'budget', type: 'Number' }
+                ]
+            },
+            {
+                id: 'case',
+                name: 'Document',
+                icon: 'Icons/Document.png',
+                color: '#008985',
+                source: 'Database',
+                x: 150,
+                y: 550,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'title', type: 'Text' },
+                    { name: 'status', type: 'Text' },
+                    { name: 'customerId', type: 'Number (Integer)' },
+                    { name: 'assignedTo', type: 'User' },
+                    { name: 'createdDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'customer',
+                name: 'RE Customer',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 650,
+                y: 500,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'email', type: 'Text' },
+                    { name: 'phone', type: 'Text' },
+                    { name: 'accountType', type: 'Text' }
+                ]
+            },
+            {
+                id: 'order',
+                name: 'RE Order',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Web Service',
+                x: 1150,
+                y: 350,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'orderNumber', type: 'Text' },
+                    { name: 'orderDate', type: 'Date' },
+                    { name: 'customerId', type: 'Number (Integer)' },
+                    { name: 'totalAmount', type: 'Number' },
+                    { name: 'status', type: 'Text' }
+                ]
+            },
+            {
+                id: 'product',
+                name: 'RE Product',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1650,
+                y: 150,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'price', type: 'Number' },
+                    { name: 'category', type: 'Text' },
+                    { name: 'supplierId', type: 'Number (Integer)' }
+                ]
+            },
+            {
+                id: 'supplier',
+                name: 'RE Supplier',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1650,
+                y: 550,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'contactEmail', type: 'Text' },
+                    { name: 'country', type: 'Text' }
+                ]
+            },
+            {
+                id: 'location',
+                name: 'RE Location',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1150,
+                y: 50,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'city', type: 'Text' },
+                    { name: 'state', type: 'Text' },
+                    { name: 'country', type: 'Text' }
+                ]
+            },
+            {
+                id: 'region',
+                name: 'RE Region',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 650,
+                y: 750,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'code', type: 'Text' }
+                ]
+            },
+            {
+                id: 'shipping',
+                name: 'RE Shipping',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1650,
+                y: 350,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'trackingNumber', type: 'Text' },
+                    { name: 'carrier', type: 'Text' },
+                    { name: 'status', type: 'Text' }
+                ]
+            },
+            {
+                id: 'warehouse',
+                name: 'RE Warehouse',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2150,
+                y: 150,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'name', type: 'Text' },
+                    { name: 'capacity', type: 'Number' }
+                ]
+            }
+        ];
+
+        // Generate 30 nodes for testing
+        const largeRecordTypes = [
+            ...smallRecordTypes,
+            {
+                id: 'invoice',
+                name: 'RE Invoice',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 400,
+                y: 200,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'invoiceNumber', type: 'Text' },
+                    { name: 'amount', type: 'Number' },
+                    { name: 'dueDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'payment',
+                name: 'RE Payment',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 400,
+                y: 650,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'paymentMethod', type: 'Text' },
+                    { name: 'amount', type: 'Number' }
+                ]
+            },
+            {
+                id: 'contract',
+                name: 'RE Contract',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 900,
+                y: 650,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'contractNumber', type: 'Text' },
+                    { name: 'startDate', type: 'Date' },
+                    { name: 'endDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'project',
+                name: 'RE Project',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1400,
+                y: 650,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'projectName', type: 'Text' },
+                    { name: 'budget', type: 'Number' }
+                ]
+            },
+            {
+                id: 'task',
+                name: 'RE Task',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1900,
+                y: 400,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'taskName', type: 'Text' },
+                    { name: 'status', type: 'Text' }
+                ]
+            },
+            {
+                id: 'asset',
+                name: 'RE Asset',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2400,
+                y: 200,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'assetName', type: 'Text' },
+                    { name: 'value', type: 'Number' }
+                ]
+            },
+            {
+                id: 'vendor',
+                name: 'RE Vendor',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2400,
+                y: 500,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'vendorName', type: 'Text' },
+                    { name: 'rating', type: 'Number' }
+                ]
+            },
+            {
+                id: 'category',
+                name: 'RE Category',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 150,
+                y: 50,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'categoryName', type: 'Text' }
+                ]
+            },
+            {
+                id: 'review',
+                name: 'RE Review',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2400,
+                y: 800,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'rating', type: 'Number' },
+                    { name: 'comment', type: 'Text' }
+                ]
+            },
+            {
+                id: 'notification',
+                name: 'RE Notification',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 150,
+                y: 850,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'message', type: 'Text' },
+                    { name: 'sentDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'audit',
+                name: 'RE Audit',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 650,
+                y: 850,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'action', type: 'Text' },
+                    { name: 'timestamp', type: 'Date' }
+                ]
+            },
+            {
+                id: 'report',
+                name: 'RE Report',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1150,
+                y: 850,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'reportName', type: 'Text' },
+                    { name: 'generatedDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'schedule',
+                name: 'RE Schedule',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 1650,
+                y: 850,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'scheduleName', type: 'Text' },
+                    { name: 'frequency', type: 'Text' }
+                ]
+            },
+            {
+                id: 'resource',
+                name: 'RE Resource',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2900,
+                y: 200,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'resourceName', type: 'Text' },
+                    { name: 'availability', type: 'Text' }
+                ]
+            },
+            {
+                id: 'budget',
+                name: 'RE Budget',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2900,
+                y: 500,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'budgetName', type: 'Text' },
+                    { name: 'amount', type: 'Number' }
+                ]
+            },
+            {
+                id: 'milestone',
+                name: 'RE Milestone',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2150,
+                y: 650,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'milestoneName', type: 'Text' },
+                    { name: 'dueDate', type: 'Date' }
+                ]
+            },
+            {
+                id: 'ticket',
+                name: 'RE Ticket',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 400,
+                y: 450,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'ticketNumber', type: 'Text' },
+                    { name: 'priority', type: 'Text' }
+                ]
+            },
+            {
+                id: 'attachment',
+                name: 'RE Attachment',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 2900,
+                y: 800,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'fileName', type: 'Text' },
+                    { name: 'fileSize', type: 'Number' }
+                ]
+            },
+            {
+                id: 'comment',
+                name: 'RE Comment',
+                icon: 'Icons/Record Type.png',
+                color: '#E6740A',
+                source: 'Database',
+                x: 3400,
+                y: 350,
+                fields: [
+                    { name: 'id', type: 'Number (Integer)', isPrimary: true },
+                    { name: 'commentText', type: 'Text' },
+                    { name: 'createdDate', type: 'Date' }
+                ]
+            }
+        ];
+
+        let recordTypes = [...smallRecordTypes];
+
+        const smallRelationships = [
+            {
+                from: 'employee',
+                to: 'department',
+                type: 'M-1',
+                label: 'belongs to',
+                color: '#9ca3af'
+            },
+            {
+                from: 'employee',
+                to: 'case',
+                type: '1-M',
+                label: 'assigned to',
+                color: '#9ca3af'
+            },
+            {
+                from: 'case',
+                to: 'customer',
+                type: 'M-1',
+                label: 'owned by',
+                color: '#9ca3af'
+            },
+            {
+                from: 'customer',
+                to: 'order',
+                type: '1-M',
+                label: 'places',
+                color: '#9ca3af'
+            },
+            {
+                from: 'order',
+                to: 'product',
+                type: 'M-1',
+                label: 'contains',
+                color: '#9ca3af'
+            },
+            {
+                from: 'product',
+                to: 'supplier',
+                type: 'M-1',
+                label: 'supplied by',
+                color: '#9ca3af'
+            },
+            {
+                from: 'department',
+                to: 'customer',
+                type: '1-1',
+                label: 'manages',
+                color: '#9ca3af'
+            },
+            {
+                from: 'department',
+                to: 'location',
+                type: 'M-1',
+                label: 'located at',
+                color: '#9ca3af'
+            },
+            {
+                from: 'customer',
+                to: 'region',
+                type: 'M-1',
+                label: 'belongs to',
+                color: '#9ca3af'
+            },
+            {
+                from: 'order',
+                to: 'shipping',
+                type: '1-1',
+                label: 'has',
+                color: '#9ca3af'
+            },
+            {
+                from: 'product',
+                to: 'warehouse',
+                type: 'M-1',
+                label: 'stored in',
+                color: '#9ca3af'
+            },
+            {
+                from: 'warehouse',
+                to: 'location',
+                type: 'M-1',
+                label: 'located at',
+                color: '#9ca3af'
+            },
+            {
+                from: 'region',
+                to: 'employee',
+                type: 'M-1',
+                label: 'managed by',
+                color: '#9ca3af'
+            }
+        ];
+
+        const largeRelationships = [
+            ...smallRelationships,
+            { from: 'customer', to: 'invoice', type: '1-M', label: 'has', color: '#9ca3af' },
+            { from: 'invoice', to: 'payment', type: '1-1', label: 'paid by', color: '#9ca3af' },
+            { from: 'customer', to: 'contract', type: '1-M', label: 'signs', color: '#9ca3af' },
+            { from: 'contract', to: 'project', type: '1-M', label: 'includes', color: '#9ca3af' },
+            { from: 'project', to: 'task', type: '1-M', label: 'contains', color: '#9ca3af' },
+            { from: 'task', to: 'employee', type: 'M-1', label: 'assigned to', color: '#9ca3af' },
+            { from: 'project', to: 'asset', type: 'M-M', label: 'uses', color: '#9ca3af' },
+            { from: 'supplier', to: 'vendor', type: '1-1', label: 'is', color: '#9ca3af' },
+            { from: 'product', to: 'category', type: 'M-1', label: 'belongs to', color: '#9ca3af' },
+            { from: 'product', to: 'review', type: '1-M', label: 'has', color: '#9ca3af' },
+            { from: 'employee', to: 'notification', type: '1-M', label: 'receives', color: '#9ca3af' },
+            { from: 'case', to: 'audit', type: '1-M', label: 'tracked by', color: '#9ca3af' },
+            { from: 'department', to: 'report', type: '1-M', label: 'generates', color: '#9ca3af' },
+            { from: 'project', to: 'schedule', type: '1-1', label: 'follows', color: '#9ca3af' },
+            { from: 'warehouse', to: 'resource', type: '1-M', label: 'stores', color: '#9ca3af' },
+            { from: 'department', to: 'budget', type: '1-1', label: 'has', color: '#9ca3af' },
+            { from: 'project', to: 'milestone', type: '1-M', label: 'tracks', color: '#9ca3af' },
+            { from: 'customer', to: 'ticket', type: '1-M', label: 'creates', color: '#9ca3af' },
+            { from: 'case', to: 'attachment', type: '1-M', label: 'has', color: '#9ca3af' },
+            { from: 'task', to: 'comment', type: '1-M', label: 'has', color: '#9ca3af' }
+        ];
+
+        let relationships = [...smallRelationships];
+
+        // State
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let draggedElement = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let showFields = false;
+        let complexityLevel = 1; // 1=Simple, 2=Expanded
+
+        // Initialize
+        function init() {
+            renderRecordTypes();
+            renderRelationships();
+            setupEventListeners();
+        }
+
+        function renderRecordTypes() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = '';
+
+            recordTypes.forEach(record => {
+                const recordEl = document.createElement('div');
+                recordEl.className = 'record-type';
+                recordEl.id = `record-${record.id}`;
+                recordEl.style.left = `${record.x}px`;
+                recordEl.style.top = `${record.y}px`;
+                recordEl.style.borderTopColor = record.color;
+
+                const fieldsHTML = showFields ? `
+                    <div class="record-fields">
+                        ${record.fields.map(field => `
+                            <div class="field">
+                                <span class="field-name">${field.isPrimary ? '🔑 ' : ''}${field.name}</span>
+                                <span class="field-type">${field.type}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '';
+
+                recordEl.innerHTML = `
+                    <div class="record-header">
+                        <img src="${record.icon}" class="record-icon" alt="${record.name}">
+                        <span class="record-title">${record.name}</span>
+                        <span class="record-collapse">−</span>
+                    </div>
+                    ${fieldsHTML}
+                `;
+
+                recordEl.addEventListener('mousedown', startDrag);
+                recordEl.addEventListener('mouseenter', (e) => showTooltip(e, record));
+                recordEl.addEventListener('mouseleave', hideTooltip);
+
+                canvas.appendChild(recordEl);
+            });
+        }
+
+        function renderRelationships() {
+            const svg = document.getElementById('svg-layer');
+            const container = document.getElementById('canvas-container');
+            
+            // Make SVG large enough to cover all possible positions
+            const svgWidth = 5000;
+            const svgHeight = 5000;
+            
+            svg.setAttribute('width', svgWidth);
+            svg.setAttribute('height', svgHeight);
+            svg.removeAttribute('viewBox');
+            svg.innerHTML = '';
+
+            relationships.forEach((rel, idx) => {
+                const fromEl = document.getElementById(`record-${rel.from}`);
+                const toEl = document.getElementById(`record-${rel.to}`);
+                
+                if (!fromEl || !toEl) return;
+
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+                const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+
+                // Calculate centers
+                const fromCenterX = (fromRect.left - containerRect.left + fromRect.width / 2) / scale - translateX / scale;
+                const fromCenterY = (fromRect.top - containerRect.top + fromRect.height / 2) / scale - translateY / scale;
+                const toCenterX = (toRect.left - containerRect.left + toRect.width / 2) / scale - translateX / scale;
+                const toCenterY = (toRect.top - containerRect.top + toRect.height / 2) / scale - translateY / scale;
+
+                // Calculate edge connection points
+                const fromLeft = (fromRect.left - containerRect.left) / scale - translateX / scale;
+                const fromRight = (fromRect.right - containerRect.left) / scale - translateX / scale;
+                const fromTop = (fromRect.top - containerRect.top) / scale - translateY / scale;
+                const fromBottom = (fromRect.bottom - containerRect.top) / scale - translateY / scale;
+
+                const toLeft = (toRect.left - containerRect.left) / scale - translateX / scale;
+                const toRight = (toRect.right - containerRect.left) / scale - translateX / scale;
+                const toTop = (toRect.top - containerRect.top) / scale - translateY / scale;
+                const toBottom = (toRect.bottom - containerRect.top) / scale - translateY / scale;
+
+                // Determine best connection points based on relative positions
+                let fromX, fromY, toX, toY, fromSide, toSide;
+
+                const dx = toCenterX - fromCenterX;
+                const dy = toCenterY - fromCenterY;
+
+                // Always start from source (from node)
+                // Determine exit side from source
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // Primarily horizontal movement
+                    if (dx > 0) {
+                        fromX = fromRight;
+                        fromY = fromCenterY;
+                        fromSide = 'right';
+                    } else {
+                        fromX = fromLeft;
+                        fromY = fromCenterY;
+                        fromSide = 'left';
+                    }
+                } else {
+                    // Primarily vertical movement
+                    if (dy > 0) {
+                        fromX = fromCenterX;
+                        fromY = fromBottom;
+                        fromSide = 'bottom';
+                    } else {
+                        fromX = fromCenterX;
+                        fromY = fromTop;
+                        fromSide = 'top';
+                    }
+                }
+
+                // Determine entry side to target
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // Horizontal connection
+                    if (dx > 0) {
+                        toX = toLeft;
+                        toY = toCenterY;
+                        toSide = 'left';
+                    } else {
+                        toX = toRight;
+                        toY = toCenterY;
+                        toSide = 'right';
+                    }
+                } else {
+                    // Vertical connection
+                    if (dy > 0) {
+                        toX = toCenterX;
+                        toY = toTop;
+                        toSide = 'top';
+                    } else {
+                        toX = toCenterX;
+                        toY = toBottom;
+                        toSide = 'bottom';
+                    }
+                }
+
+                // Create D3-style curved path
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                
+                let pathData = '';
+                let midX = (fromX + toX) / 2;
+                let midY = (fromY + toY) / 2;
+                
+                // Calculate control points for smooth Bezier curves
+                let cp1X, cp1Y, cp2X, cp2Y;
+                
+                // Calculate distance for control point offset
+                const distance = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+                const controlOffset = Math.min(distance * 0.4, 150); // Limit max offset
+                
+                // Determine curve based on connection sides
+                if (fromSide === 'right') {
+                    cp1X = fromX + controlOffset;
+                    cp1Y = fromY;
+                } else if (fromSide === 'left') {
+                    cp1X = fromX - controlOffset;
+                    cp1Y = fromY;
+                } else if (fromSide === 'bottom') {
+                    cp1X = fromX;
+                    cp1Y = fromY + controlOffset;
+                } else { // top
+                    cp1X = fromX;
+                    cp1Y = fromY - controlOffset;
+                }
+                
+                if (toSide === 'left') {
+                    cp2X = toX - controlOffset;
+                    cp2Y = toY;
+                } else if (toSide === 'right') {
+                    cp2X = toX + controlOffset;
+                    cp2Y = toY;
+                } else if (toSide === 'top') {
+                    cp2X = toX;
+                    cp2Y = toY - controlOffset;
+                } else { // bottom
+                    cp2X = toX;
+                    cp2Y = toY + controlOffset;
+                }
+                
+                // Create smooth cubic Bezier curve
+                pathData = `M ${fromX} ${fromY} C ${cp1X} ${cp1Y}, ${cp2X} ${cp2Y}, ${toX} ${toY}`;
+                
+                path.setAttribute('d', pathData);
+                path.setAttribute('class', 'relationship-line');
+                path.setAttribute('stroke', rel.color);
+                path.setAttribute('fill', 'none');
+                path.style.pointerEvents = 'stroke';
+                path.style.cursor = 'pointer';
+                
+                path.addEventListener('mouseenter', (e) => showRelationshipTooltip(e, rel));
+                path.addEventListener('mouseleave', hideTooltip);
+                
+                svg.appendChild(path);
+
+                // Add relationship icon at the midpoint
+                const iconSize = 20;
+                
+                // Calculate position at 50% of the curve using the Bezier formula
+                const t = 0.5;
+                const iconX = Math.pow(1-t, 3) * fromX + 
+                             3 * Math.pow(1-t, 2) * t * cp1X + 
+                             3 * (1-t) * Math.pow(t, 2) * cp2X + 
+                             Math.pow(t, 3) * toX;
+                const iconY = Math.pow(1-t, 3) * fromY + 
+                             3 * Math.pow(1-t, 2) * t * cp1Y + 
+                             3 * (1-t) * Math.pow(t, 2) * cp2Y + 
+                             Math.pow(t, 3) * toY;
+                
+                // Calculate angle based on tangent at midpoint
+                const tangentX = 3 * Math.pow(1-t, 2) * (cp1X - fromX) +
+                                6 * (1-t) * t * (cp2X - cp1X) +
+                                3 * Math.pow(t, 2) * (toX - cp2X);
+                const tangentY = 3 * Math.pow(1-t, 2) * (cp1Y - fromY) +
+                                6 * (1-t) * t * (cp2Y - cp1Y) +
+                                3 * Math.pow(t, 2) * (toY - cp2Y);
+                const angle = Math.atan2(tangentY, tangentX) * 180 / Math.PI;
+                
+                const svgImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                svgImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `Icons/${rel.type}.png`);
+                svgImage.setAttribute('x', iconX - iconSize / 2);
+                svgImage.setAttribute('y', iconY - iconSize / 2);
+                svgImage.setAttribute('width', iconSize);
+                svgImage.setAttribute('height', iconSize);
+                svgImage.setAttribute('transform', `rotate(${angle} ${iconX} ${iconY})`);
+                svgImage.style.pointerEvents = 'none';
+                
+                svg.appendChild(svgImage);
+            });
+        }
+
+        function startDrag(e) {
+            if (e.target.closest('.record-type')) {
+                draggedElement = e.target.closest('.record-type');
+                draggedElement.classList.add('dragging');
+                
+                const rect = draggedElement.getBoundingClientRect();
+                const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+                
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                
+                e.preventDefault();
+            }
+        }
+
+        function drag(e) {
+            if (draggedElement) {
+                const containerRect = document.getElementById('canvas-container').getBoundingClientRect();
+                const x = (e.clientX - containerRect.left - dragOffsetX) / scale - translateX / scale;
+                const y = (e.clientY - containerRect.top - dragOffsetY) / scale - translateY / scale;
+                
+                draggedElement.style.left = `${x}px`;
+                draggedElement.style.top = `${y}px`;
+                
+                const recordId = draggedElement.id.replace('record-', '');
+                const record = recordTypes.find(r => r.id === recordId);
+                if (record) {
+                    record.x = x;
+                    record.y = y;
+                }
+                
+                renderRelationships();
+            }
+        }
+
+        function endDrag() {
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging');
+                draggedElement = null;
+            }
+        }
+
+        function startPan(e) {
+            if (!draggedElement && e.target.closest('#canvas-container')) {
+                isPanning = true;
+                panStartX = e.clientX - translateX;
+                panStartY = e.clientY - translateY;
+                document.getElementById('canvas-container').classList.add('panning');
+            }
+        }
+
+        function pan(e) {
+            if (isPanning) {
+                translateX = e.clientX - panStartX;
+                translateY = e.clientY - panStartY;
+                updateTransform();
+            }
+        }
+
+        function endPan() {
+            isPanning = false;
+            document.getElementById('canvas-container').classList.remove('panning');
+        }
+
+        function handleWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.min(Math.max(0.3, scale * delta), 3);
+            
+            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            translateX = mouseX - (mouseX - translateX) * (newScale / scale);
+            translateY = mouseY - (mouseY - translateY) * (newScale / scale);
+            scale = newScale;
+            
+            updateTransform();
+            renderRelationships();
+        }
+
+        function updateTransform() {
+            const canvas = document.getElementById('canvas');
+            const svg = document.getElementById('svg-layer');
+            canvas.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        }
+
+        function zoomIn() {
+            scale = Math.min(scale * 1.2, 3);
+            updateTransform();
+            renderRelationships();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale * 0.8, 0.3);
+            updateTransform();
+            renderRelationships();
+        }
+
+        function resetView() {
+            scale = 1;
+            translateX = 0;
+            translateY = 0;
+            updateTransform();
+            renderRelationships();
+        }
+
+        function autoLayout() {
+            const cols = 3;
+            const spacingX = 400;
+            const spacingY = 350;
+            const offsetX = 100;
+            const offsetY = 100;
+            
+            recordTypes.forEach((record, idx) => {
+                const col = idx % cols;
+                const row = Math.floor(idx / cols);
+                record.x = offsetX + col * spacingX;
+                record.y = offsetY + row * spacingY;
+            });
+            
+            renderRecordTypes();
+            renderRelationships();
+        }
+
+        function toggleFields() {
+            showFields = !showFields;
+            const toggle = document.getElementById('fieldsToggle');
+            toggle.classList.toggle('active');
+            renderRecordTypes();
+            renderRelationships();
+        }
+
+        function showTooltip(e, record) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.innerHTML = `
+                <strong>${record.name}</strong><br>
+                Source: ${record.source}<br>
+                Fields: ${record.fields.length}
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.clientX + 10}px`;
+            tooltip.style.top = `${e.clientY + 10}px`;
+        }
+
+        function showRelationshipTooltip(e, rel) {
+            const tooltip = document.getElementById('tooltip');
+            const fromRecord = recordTypes.find(r => r.id === rel.from);
+            const toRecord = recordTypes.find(r => r.id === rel.to);
+            
+            tooltip.innerHTML = `
+                <strong>${fromRecord.name}</strong> ${rel.label} <strong>${toRecord.name}</strong><br>
+                Type: ${rel.type.replace('-', ' ')}
+            `;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.clientX + 10}px`;
+            tooltip.style.top = `${e.clientY + 10}px`;
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        function toggleDataset() {
+            if (currentDataset === 'small') {
+                currentDataset = 'large';
+                recordTypes = [...largeRecordTypes];
+                relationships = [...largeRelationships];
+                document.getElementById('dataset-label').textContent = 'Switch to 11 Nodes';
+            } else {
+                currentDataset = 'small';
+                recordTypes = [...smallRecordTypes];
+                relationships = [...smallRelationships];
+                document.getElementById('dataset-label').textContent = 'Switch to 30 Nodes';
+            }
+            
+            renderRecordTypes();
+            renderRelationships();
+        }
+
+        function toggleView(isDetailed) {
+            showFields = isDetailed;
+            
+            // Re-render to apply changes
+            renderRecordTypes();
+            
+            // Wait for DOM to update before recalculating relationships
+            setTimeout(() => {
+                renderRelationships();
+            }, 10);
+        }
+
+        function updateComplexity(level) {
+            complexityLevel = parseInt(level);
+            // Update active marker
+            document.querySelectorAll('.marker').forEach(marker => {
+                marker.classList.remove('active');
+                if (marker.dataset.level === level) {
+                    marker.classList.add('active');
+                }
+            });
+            
+            // Show/hide fields based on complexity level
+            if (complexityLevel === 2) {
+                showFields = true;
+            } else {
+                showFields = false;
+            }
+            
+            // Re-render to apply changes
+            renderRecordTypes();
+            
+            // Wait for DOM to update before recalculating relationships
+            setTimeout(() => {
+                renderRelationships();
+            }, 10);
+        }
+
+        function setupEventListeners() {
+            document.addEventListener('mousemove', (e) => {
+                drag(e);
+                pan(e);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                endDrag();
+                endPan();
+            });
+            
+            document.getElementById('canvas-container').addEventListener('mousedown', startPan);
+            document.getElementById('canvas-container').addEventListener('wheel', handleWheel);
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
