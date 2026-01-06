@@ -59,7 +59,11 @@
                     { name: 'lastName', type: 'Text' },
                     { name: 'email', type: 'Text' },
                     { name: 'departmentId', type: 'Number (Integer)' },
-                    { name: 'hireDate', type: 'Date' }
+                    { name: 'hireDate', type: 'Date' },
+                    { name: 'phoneNumber', type: 'Text' },
+                    { name: 'jobTitle', type: 'Text' },
+                    { name: 'salary', type: 'Number' },
+                    { name: 'isActive', type: 'Boolean' }
                 ]
             },
             {
@@ -124,7 +128,13 @@
                     { name: 'orderDate', type: 'Date' },
                     { name: 'customerId', type: 'Number (Integer)' },
                     { name: 'totalAmount', type: 'Number' },
-                    { name: 'status', type: 'Text' }
+                    { name: 'status', type: 'Text' },
+                    { name: 'shippingAddress', type: 'Text' },
+                    { name: 'billingAddress', type: 'Text' },
+                    { name: 'paymentMethod', type: 'Text' },
+                    { name: 'discount', type: 'Number' },
+                    { name: 'taxAmount', type: 'Number' },
+                    { name: 'notes', type: 'Text' }
                 ]
             },
             {
@@ -140,7 +150,10 @@
                     { name: 'name', type: 'Text' },
                     { name: 'price', type: 'Number' },
                     { name: 'category', type: 'Text' },
-                    { name: 'supplierId', type: 'Number (Integer)' }
+                    { name: 'supplierId', type: 'Number (Integer)' },
+                    { name: 'description', type: 'Text' },
+                    { name: 'sku', type: 'Text' },
+                    { name: 'stockQuantity', type: 'Number (Integer)' }
                 ]
             },
             {
@@ -646,12 +659,25 @@
 
                 const fieldsHTML = showFields ? `
                     <div class="record-fields">
-                        ${record.fields.map(field => `
+                        ${record.fields.slice(0, 6).map(field => `
                             <div class="field">
                                 <span class="field-name">${field.isPrimary ? '🔑 ' : ''}${field.name}</span>
                                 <span class="field-type">${field.type}</span>
                             </div>
                         `).join('')}
+                        <div class="hidden-fields" id="hidden-${record.id}" style="display: none;">
+                            ${record.fields.slice(6).map(field => `
+                                <div class="field">
+                                    <span class="field-name">${field.isPrimary ? '🔑 ' : ''}${field.name}</span>
+                                    <span class="field-type">${field.type}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ${record.fields.length > 6 ? `
+                            <div class="field-more" onclick="toggleFields('${record.id}')">
+                                <span id="toggle-text-${record.id}">+${record.fields.length - 6} more</span>
+                            </div>
+                        ` : ''}
                     </div>
                 ` : '';
 
@@ -1042,6 +1068,25 @@
             
             renderRecordTypes();
             renderRelationships();
+        }
+
+        function toggleFields(recordId) {
+            const hiddenFields = document.getElementById(`hidden-${recordId}`);
+            const toggleText = document.getElementById(`toggle-text-${recordId}`);
+            const record = recordTypes.find(r => r.id === recordId);
+            
+            if (hiddenFields.style.display === 'none') {
+                hiddenFields.style.display = 'block';
+                toggleText.textContent = 'Show less';
+            } else {
+                hiddenFields.style.display = 'none';
+                toggleText.textContent = `+${record.fields.length - 6} more`;
+            }
+            
+            // Re-render relationships after expanding/collapsing
+            setTimeout(() => {
+                renderRelationships();
+            }, 10);
         }
 
         function toggleView(isDetailed) {
